@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>LabChat</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <script type="module" src="script.js"></script>
+</head>
+
+<body>
+
+    <!-- =========================
+         NAME SCREEN
+    ========================== -->
+
+    <div id="nameScreen" class="screen active">
+
+        <div class="welcome-card">
+
+            <div class="logo">
+                💬
+            </div>
+
+            <h1>LabChat</h1>
+
+            <p class="welcome-text">
+                Enter your display name to join the chat.
+            </p>
+
+            <input
+                type="text"
+                id="nameInput"
+                class="name-input"
+                maxlength="30"
+                placeholder="Enter your display name"
+                autocomplete="off"
+            >
+
+            <button id="joinButton" class="primary-button">
+                Enter Chat
+            </button>
+
+            <p id="nameError" class="error-message"></p>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         CHAT APPLICATION
+    ========================== -->
+
+    <div id="chatApp" class="chat-app">
+
+        <!-- HEADER -->
+
+        <header class="top-bar">
+
+            <div class="brand-area">
+
+                <div class="brand-icon">
+                    💬
+                </div>
+
+                <div class="brand-text">
+
+                    <h1>LabChat</h1>
+
+                    <div class="online-status">
+                        <span class="online-dot"></span>
+                        <span id="onlineCount">0</span>
+                        <span>online</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="header-actions">
+
+                <button
+                    id="settingsButton"
+                    class="icon-button"
+                    title="Settings"
+                    aria-label="Settings"
+                >
+                    ⚙️
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <!-- CHAT AREA -->
+
+        <main id="messagesContainer" class="messages-container">
+
+            <div id="messages" class="messages">
+
+                <!-- Messages are inserted here -->
+
+            </div>
+
+        </main>
+
+
+        <!-- TYPING AREA -->
+
+        <footer class="message-area">
+
+            <div
+                id="emojiPicker"
+                class="emoji-picker hidden"
+            >
+
+                <div class="emoji-header">
+                    <span>Emoji</span>
+
+                    <button
+                        id="closeEmojiButton"
+                        class="emoji-close"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <div id="emojiGrid" class="emoji-grid">
+
+                    <!-- Emojis inserted by JavaScript -->
+
+                </div>
+
+            </div>
+
+
+            <div class="message-input-wrapper">
+
+                <button
+                    id="emojiButton"
+                    class="input-icon-button"
+                    title="Emoji"
+                    aria-label="Emoji"
+                >
+                    😊
+                </button>
+
+
+                <textarea
+                    id="messageInput"
+                    class="message-input"
+                    maxlength="1000"
+                    rows="1"
+                    placeholder="Type a message..."
+                    autocomplete="off"
+                ></textarea>
+
+
+                <button
+                    id="sendButton"
+                    class="send-button"
+                    title="Send message"
+                    aria-label="Send message"
+                >
+                    ➤
+                </button>
+
+            </div>
+
+        </footer>
+
+    </div>
+
+
+    <!-- =========================
+         SETTINGS PANEL
+    ========================== -->
+
+    <div
+        id="settingsOverlay"
+        class="settings-overlay hidden"
+    >
+
+        <div class="settings-panel">
+
+            <div class="settings-header">
+
+                <h2>Settings</h2>
+
+                <button
+                    id="closeSettingsButton"
+                    class="close-button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="settings-content">
+
+
+                <!-- DISPLAY NAME -->
+
+                <section class="setting-section">
+
+                    <h3>Display Name</h3>
+
+                    <p class="setting-description">
+                        Change the name other people see.
+                    </p>
+
+                    <div class="setting-row">
+
+                        <input
+                            type="text"
+                            id="changeNameInput"
+                            maxlength="30"
+                            class="settings-input"
+                            placeholder="Display name"
+                        >
+
+                        <button
+                            id="saveNameButton"
+                            class="secondary-button"
+                        >
+                            Save
+                        </button>
+
+                    </div>
+
+                </section>
+
+
+                <!-- BACKGROUND -->
+
+                <section class="setting-section">
+
+                    <h3>Background</h3>
+
+                    <p class="setting-description">
+                        Choose a background for your chat.
+                    </p>
+
+                    <div
+                        id="backgroundGrid"
+                        class="background-grid"
+                    >
+
+                        <!-- Backgrounds inserted by JavaScript -->
+
+                    </div>
+
+                </section>
+
+
+                <!-- CUSTOM BACKGROUND -->
+
+                <section class="setting-section">
+
+                    <h3>Custom Background</h3>
+
+                    <p class="setting-description">
+                        Enter an image URL to use as your background.
+                    </p>
+
+                    <div class="setting-row">
+
+                        <input
+                            type="text"
+                            id="customBackgroundInput"
+                            class="settings-input"
+                            placeholder="https://example.com/image.jpg"
+                        >
+
+                        <button
+                            id="applyBackgroundButton"
+                            class="secondary-button"
+                        >
+                            Apply
+                        </button>
+
+                    </div>
+
+                </section>
+
+
+                <!-- USER INFO -->
+
+                <section class="setting-section">
+
+                    <h3>Your Information</h3>
+
+                    <div class="user-info">
+
+                        <div>
+                            <span class="info-label">Name</span>
+                            <strong id="currentName">-</strong>
+                        </div>
+
+                        <div>
+                            <span class="info-label">Status</span>
+                            <strong class="status-online">
+                                Online
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- TOAST -->
+
+    <div
+        id="toast"
+        class="toast"
+    >
+        <span id="toastMessage"></span>
+    </div>
+
+</body>
+</html>
