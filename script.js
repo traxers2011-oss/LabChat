@@ -1,6 +1,7 @@
 // ============================================================
 // LABCHAT
 // REALTIME DATABASE CHAT
+// SHARED BACKGROUND VERSION
 // ============================================================
 
 import {
@@ -22,14 +23,67 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
-import {
-    BACKGROUNDS,
-    EMOJIS,
-    loadSettings,
-    saveSettings,
-    getSavedName,
-    saveDisplayName
-} from "./settings.js";
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+const EMOJIS = [
+    "😀", "😃", "😄", "😁", "😆", "😅",
+    "😂", "🤣", "😊", "😇", "🙂", "🙃",
+    "😉", "😌", "😍", "🥰", "😘", "😎",
+    "🤩", "🥳", "😏", "😭", "😡", "😱",
+    "🤔", "🙄", "😴", "🤯",
+    "❤️", "🧡", "💛", "💚", "💙", "💜",
+    "🖤", "🤍", "💔", "✨", "🔥", "⭐",
+    "🎉", "🎊", "👍", "👎", "👏", "🙏",
+    "💯", "😈", "👀", "💀", "🤝",
+    "🚀", "🎮", "⚡", "🌟", "🍕", "☕"
+];
+
+
+const BACKGROUNDS = [
+    {
+        id: "default",
+        name: "Default",
+        css: "linear-gradient(135deg, #111827, #1e293b, #0f172a)"
+    },
+    {
+        id: "midnight",
+        name: "Midnight",
+        css: "linear-gradient(135deg, #020617, #0f172a, #172554)"
+    },
+    {
+        id: "purple",
+        name: "Purple",
+        css: "linear-gradient(135deg, #312e81, #581c87, #701a75)"
+    },
+    {
+        id: "ocean",
+        name: "Ocean",
+        css: "linear-gradient(135deg, #082f49, #075985, #164e63)"
+    },
+    {
+        id: "sunset",
+        name: "Sunset",
+        css: "linear-gradient(135deg, #431407, #7c2d12, #4c0519)"
+    },
+    {
+        id: "forest",
+        name: "Forest",
+        css: "linear-gradient(135deg, #052e16, #14532d, #064e3b)"
+    },
+    {
+        id: "darkblue",
+        name: "Dark Blue",
+        css: "linear-gradient(135deg, #020617, #172554, #1e3a8a)"
+    },
+    {
+        id: "pink",
+        name: "Pink",
+        css: "linear-gradient(135deg, #500724, #831843, #701a75)"
+    }
+];
 
 
 // ============================================================
@@ -38,13 +92,22 @@ import {
 
 let currentUser = null;
 let displayName = "";
-let messagesUnsubscribe = null;
-let presenceUnsubscribe = null;
 
-let currentSettings = loadSettings();
+let messagesListenerStarted = false;
+let presenceListenerStarted = false;
+let backgroundListenerStarted = false;
 
-let selectedBackground =
-    currentSettings.background || "midnight";
+
+// ============================================================
+// LOCAL NAME
+// ============================================================
+
+const savedName =
+    localStorage.getItem("labchat_display_name");
+
+if (savedName) {
+    displayName = savedName;
+}
 
 
 // ============================================================
@@ -128,7 +191,7 @@ const toastMessage =
 
 
 // ============================================================
-// INITIALIZE
+// STARTUP
 // ============================================================
 
 document.addEventListener(
@@ -137,43 +200,37 @@ document.addEventListener(
 );
 
 
-async function initialize() {
+function initialize() {
 
     createEmojiPicker();
 
     createBackgroundPicker();
 
-    applySavedBackground();
-
     setupEventListeners();
 
-    const savedName = getSavedName();
-
-    if (savedName) {
-        nameInput.value = savedName;
+    if (nameInput && displayName) {
+        nameInput.value = displayName;
     }
 
-    try {
+    signInAnonymously(auth)
+        .catch((error) => {
 
-        await signInAnonymously(auth);
+            console.error(
+                "Firebase authentication error:",
+                error
+            );
 
-    } catch (error) {
+            showNameError(
+                "Unable to connect to the chat server."
+            );
 
-        console.error(
-            "Firebase authentication error:",
-            error
-        );
+        });
 
-        showNameError(
-            "Unable to connect to the chat server."
-        );
-
-    }
 }
 
 
 // ============================================================
-// AUTHENTICATION
+// AUTH
 // ============================================================
 
 onAuthStateChanged(
@@ -186,12 +243,15 @@ onAuthStateChanged(
 
         currentUser = user;
 
+        // Listen for the shared room background
+        startBackgroundListener();
+
     }
 );
 
 
 // ============================================================
-// EVENT LISTENERS
+// EVENTS
 // ============================================================
 
 function setupEventListeners() {
@@ -251,13 +311,25 @@ function setupEventListeners() {
 
     emojiButton.addEventListener(
         "click",
-        toggleEmojiPicker
+        () => {
+
+            emojiPicker.classList.toggle(
+                "hidden"
+            );
+
+        }
     );
 
 
     closeEmojiButton.addEventListener(
         "click",
-        closeEmojiPicker
+        () => {
+
+            emojiPicker.classList.add(
+                "hidden"
+            );
+
+        }
     );
 
 
@@ -322,18 +394,14 @@ function setupEventListeners() {
         "click",
         (event) => {
 
-            const insideEmoji =
-                emojiPicker.contains(event.target);
-
-            const emojiClicked =
-                emojiButton.contains(event.target);
-
             if (
-                !insideEmoji &&
-                !emojiClicked
+                !emojiPicker.contains(event.target) &&
+                !emojiButton.contains(event.target)
             ) {
 
-                closeEmojiPicker();
+                emojiPicker.classList.add(
+                    "hidden"
+                );
 
             }
 
@@ -399,20 +467,20 @@ async function joinChat() {
 
     displayName = name;
 
-    saveDisplayName(displayName);
+    localStorage.setItem(
+        "labchat_display_name",
+        displayName
+    );
 
 
-    currentSettings.displayName =
-        displayName;
+    if (currentName) {
+        currentName.textContent = displayName;
+    }
 
-    saveSettings(currentSettings);
 
-
-    currentName.textContent =
-        displayName;
-
-    changeNameInput.value =
-        displayName;
+    if (changeNameInput) {
+        changeNameInput.value = displayName;
+    }
 
 
     nameScreen.classList.remove(
@@ -440,25 +508,31 @@ async function joinChat() {
 
 function startChat() {
 
-    listenForMessages();
+    if (!messagesListenerStarted) {
 
-    setupPresence();
+        messagesListenerStarted = true;
 
-    scrollMessagesToBottom();
+        listenForMessages();
+
+    }
+
+
+    if (!presenceListenerStarted) {
+
+        presenceListenerStarted = true;
+
+        setupPresence();
+
+    }
 
 }
 
 
 // ============================================================
-// REALTIME DATABASE MESSAGES
+// MESSAGES
 // ============================================================
 
 function listenForMessages() {
-
-    if (messagesUnsubscribe) {
-        messagesUnsubscribe();
-    }
-
 
     const messagesRef =
         ref(
@@ -467,82 +541,76 @@ function listenForMessages() {
         );
 
 
-    messagesUnsubscribe =
-        onValue(
-            messagesRef,
-            (snapshot) => {
+    onValue(
+        messagesRef,
+        (snapshot) => {
 
-                messages.innerHTML = "";
-
-
-                const data =
-                    snapshot.val();
+            messages.innerHTML = "";
 
 
-                if (!data) {
-
-                    showEmptyChat();
-
-                    return;
-
-                }
+            const data =
+                snapshot.val();
 
 
-                const messageList =
-                    Object.entries(data)
-                        .map(
-                            ([id, message]) => ({
-                                id,
-                                ...message
-                            })
-                        )
-                        .sort(
-                            (a, b) =>
-                                (a.createdAt || 0) -
-                                (b.createdAt || 0)
-                        )
-                        .slice(-300);
+            if (!data) {
 
+                showEmptyChat();
 
-                if (
-                    messageList.length === 0
-                ) {
-
-                    showEmptyChat();
-
-                    return;
-
-                }
-
-
-                messageList.forEach(
-                    (message) => {
-
-                        renderMessage(
-                            message,
-                            message.id
-                        );
-
-                    }
-                );
-
-
-                scrollMessagesToBottom();
-
-            },
-            (error) => {
-
-                console.error(
-                    "Message listener error:",
-                    error
-                );
-
-                showToast(
-                    "Unable to load messages."
-                );
+                return;
 
             }
-        );
+
+
+            const messageList =
+                Object.entries(data)
+                    .map(
+                        ([id, message]) => ({
+                            id,
+                            ...message
+                        })
+                    )
+                    .sort(
+                        (a, b) =>
+                            (a.createdAt || 0) -
+                            (b.createdAt || 0)
+                    )
+                    .slice(-300);
+
+
+            if (
+                messageList.length === 0
+            ) {
+
+                showEmptyChat();
+
+                return;
+
+            }
+
+
+            messageList.forEach(
+                (message) => {
+
+                    renderMessage(
+                        message
+                    );
+
+                }
+            );
+
+
+            scrollMessagesToBottom();
+
+        },
+        (error) => {
+
+            console.error(
+                "Message listener error:",
+                error
+            );
+
+        }
+    );
 
 }
 
@@ -607,12 +675,12 @@ async function sendMessage() {
             );
 
 
-        const newMessageRef =
+        const newMessage =
             push(messagesRef);
 
 
         await set(
-            newMessageRef,
+            newMessage,
             {
                 text: text,
                 senderName: displayName,
@@ -626,12 +694,10 @@ async function sendMessage() {
 
         autoResizeMessageInput();
 
-        closeEmojiPicker();
-
         messageInput.focus();
 
-
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
             "Send message error:",
@@ -642,7 +708,8 @@ async function sendMessage() {
             "Message could not be sent."
         );
 
-    } finally {
+    }
+    finally {
 
         sendButton.disabled = false;
 
@@ -655,10 +722,7 @@ async function sendMessage() {
 // RENDER MESSAGE
 // ============================================================
 
-function renderMessage(
-    data,
-    messageId
-) {
+function renderMessage(data) {
 
     const wrapper =
         document.createElement("div");
@@ -764,13 +828,13 @@ function showEmptyChat() {
 
 
 // ============================================================
-// MESSAGE TIME
+// TIME
 // ============================================================
 
 function formatMessageTime(timestamp) {
 
     if (!timestamp) {
-        return "Sending...";
+        return "";
     }
 
 
@@ -801,7 +865,7 @@ function formatMessageTime(timestamp) {
 
 
 // ============================================================
-// ONLINE PRESENCE
+// PRESENCE
 // ============================================================
 
 function setupPresence() {
@@ -826,42 +890,36 @@ function setupPresence() {
         );
 
 
-    if (presenceUnsubscribe) {
-        presenceUnsubscribe();
-    }
+    onValue(
+        connectedRef,
+        (snapshot) => {
 
+            if (
+                snapshot.val() !== true
+            ) {
 
-    presenceUnsubscribe =
-        onValue(
-            connectedRef,
-            (snapshot) => {
-
-                if (
-                    snapshot.val() !== true
-                ) {
-
-                    return;
-
-                }
-
-
-                onDisconnect(
-                    presenceRef
-                ).remove();
-
-
-                set(
-                    presenceRef,
-                    {
-                        name: displayName,
-                        online: true,
-                        lastSeen:
-                            serverTimestamp()
-                    }
-                );
+                return;
 
             }
-        );
+
+
+            onDisconnect(
+                presenceRef
+            ).remove();
+
+
+            set(
+                presenceRef,
+                {
+                    name: displayName,
+                    online: true,
+                    lastSeen:
+                        serverTimestamp()
+                }
+            );
+
+        }
+    );
 
 
     listenForOnlineUsers();
@@ -870,12 +928,12 @@ function setupPresence() {
 
 
 // ============================================================
-// ONLINE USERS
+// ONLINE COUNT
 // ============================================================
 
 function listenForOnlineUsers() {
 
-    const presenceListRef =
+    const presenceRef =
         ref(
             realtimeDb,
             "presence"
@@ -883,7 +941,7 @@ function listenForOnlineUsers() {
 
 
     onValue(
-        presenceListRef,
+        presenceRef,
         (snapshot) => {
 
             const data =
@@ -910,15 +968,7 @@ function listenForOnlineUsers() {
 
 
             onlineCount.textContent =
-                String(users.length);
-
-        },
-        (error) => {
-
-            console.error(
-                "Presence error:",
-                error
-            );
+                users.length;
 
         }
     );
@@ -927,7 +977,7 @@ function listenForOnlineUsers() {
 
 
 // ============================================================
-// EMOJI PICKER
+// EMOJIS
 // ============================================================
 
 function createEmojiPicker() {
@@ -992,45 +1042,25 @@ function insertEmoji(emoji) {
         text.slice(end);
 
 
-    const newPosition =
+    const position =
         start + emoji.length;
 
 
     messageInput.focus();
 
-
     messageInput.selectionStart =
-        newPosition;
+        position;
 
     messageInput.selectionEnd =
-        newPosition;
-
+        position;
 
     autoResizeMessageInput();
 
 }
 
 
-function toggleEmojiPicker() {
-
-    emojiPicker.classList.toggle(
-        "hidden"
-    );
-
-}
-
-
-function closeEmojiPicker() {
-
-    emojiPicker.classList.add(
-        "hidden"
-    );
-
-}
-
-
 // ============================================================
-// BACKGROUND PICKER
+// SHARED BACKGROUND
 // ============================================================
 
 function createBackgroundPicker() {
@@ -1047,8 +1077,7 @@ function createBackgroundPicker() {
                 );
 
 
-            option.type =
-                "button";
+            option.type = "button";
 
             option.className =
                 "background-option";
@@ -1079,8 +1108,10 @@ function createBackgroundPicker() {
                 "click",
                 () => {
 
-                    applyPresetBackground(
-                        background
+                    setSharedBackground(
+                        background.css,
+                        background.id,
+                        ""
                     );
 
                 }
@@ -1094,54 +1125,158 @@ function createBackgroundPicker() {
         }
     );
 
+}
 
-    updateSelectedBackground();
+
+// ============================================================
+// LISTEN FOR SHARED BACKGROUND
+// ============================================================
+
+function startBackgroundListener() {
+
+    if (backgroundListenerStarted) {
+        return;
+    }
+
+
+    backgroundListenerStarted = true;
+
+
+    const backgroundRef =
+        ref(
+            realtimeDb,
+            "chatSettings/background"
+        );
+
+
+    onValue(
+        backgroundRef,
+        (snapshot) => {
+
+            const data =
+                snapshot.val();
+
+
+            if (!data) {
+
+                applyBackgroundLocally(
+                    "linear-gradient(135deg, #111827, #1e293b, #0f172a)"
+                );
+
+                return;
+
+            }
+
+
+            if (
+                data.type === "custom" &&
+                data.value
+            ) {
+
+                applyBackgroundLocally(
+                    `url("${data.value}")`
+                );
+
+            }
+            else if (
+                data.value
+            ) {
+
+                applyBackgroundLocally(
+                    data.value
+                );
+
+            }
+
+
+            updateSelectedBackground(
+                data.id || ""
+            );
+
+        },
+        (error) => {
+
+            console.error(
+                "Background listener error:",
+                error
+            );
+
+        }
+    );
 
 }
 
 
 // ============================================================
-// PRESET BACKGROUND
+// CHANGE SHARED BACKGROUND
 // ============================================================
 
-function applyPresetBackground(
-    background
+async function setSharedBackground(
+    css,
+    id,
+    customUrl
 ) {
 
-    selectedBackground =
-        background.id;
+    if (!currentUser) {
+
+        showToast(
+            "You are not connected."
+        );
+
+        return;
+
+    }
 
 
-    currentSettings.background =
-        background.id;
+    try {
+
+        const backgroundRef =
+            ref(
+                realtimeDb,
+                "chatSettings/background"
+            );
 
 
-    currentSettings.customBackground =
-        "";
+        await set(
+            backgroundRef,
+            {
+                type:
+                    customUrl
+                        ? "custom"
+                        : "preset",
 
+                id:
+                    id,
 
-    saveSettings(
-        currentSettings
-    );
+                value:
+                    customUrl || css,
 
+                changedBy:
+                    currentUser.uid,
 
-    document.documentElement.style
-        .setProperty(
-            "--chat-background",
-            background.css
+                changedAt:
+                    Date.now()
+            }
         );
 
 
-    updateSelectedBackground();
+        showToast(
+            "Background changed for everyone."
+        );
 
+    }
+    catch (error) {
 
-    customBackgroundInput.value =
-        "";
+        console.error(
+            "Background update error:",
+            error
+        );
 
+        showToast(
+            "Background could not be changed."
+        );
 
-    showToast(
-        "Background changed."
-    );
+    }
 
 }
 
@@ -1180,94 +1315,25 @@ function applyCustomBackground() {
     }
 
 
-    currentSettings.customBackground =
-        url;
-
-
-    currentSettings.background =
-        "custom";
-
-
-    saveSettings(
-        currentSettings
-    );
-
-
-    selectedBackground =
-        "custom";
-
-
-    document.documentElement.style
-        .setProperty(
-            "--chat-background",
-            `url("${url}")`
-        );
-
-
-    document.documentElement.style
-        .setProperty(
-            "--chat-background-size",
-            "cover"
-        );
-
-
-    updateSelectedBackground();
-
-
-    showToast(
-        "Custom background applied."
+    setSharedBackground(
+        "",
+        "custom",
+        url
     );
 
 }
 
 
 // ============================================================
-// APPLY SAVED BACKGROUND
+// APPLY BACKGROUND LOCALLY
 // ============================================================
 
-function applySavedBackground() {
-
-    if (
-        currentSettings.customBackground
-    ) {
-
-        document.documentElement.style
-            .setProperty(
-                "--chat-background",
-                `url("${currentSettings.customBackground}")`
-            );
-
-        document.documentElement.style
-            .setProperty(
-                "--chat-background-size",
-                "cover"
-            );
-
-        selectedBackground =
-            "custom";
-
-        return;
-
-    }
-
-
-    const background =
-        BACKGROUNDS.find(
-            item =>
-                item.id ===
-                selectedBackground
-        );
-
-
-    if (!background) {
-        return;
-    }
-
+function applyBackgroundLocally(css) {
 
     document.documentElement.style
         .setProperty(
             "--chat-background",
-            background.css
+            css
         );
 
 
@@ -1281,10 +1347,10 @@ function applySavedBackground() {
 
 
 // ============================================================
-// BACKGROUND SELECTION UI
+// SELECTED BACKGROUND
 // ============================================================
 
-function updateSelectedBackground() {
+function updateSelectedBackground(id) {
 
     document
         .querySelectorAll(
@@ -1295,8 +1361,7 @@ function updateSelectedBackground() {
 
                 option.classList.toggle(
                     "selected",
-                    option.dataset.background ===
-                    selectedBackground
+                    option.dataset.background === id
                 );
 
             }
@@ -1306,7 +1371,7 @@ function updateSelectedBackground() {
 
 
 // ============================================================
-// SETTINGS
+// NAME SETTINGS
 // ============================================================
 
 function openSettings() {
@@ -1378,30 +1443,21 @@ function changeDisplayName() {
         newName;
 
 
-    saveDisplayName(
+    localStorage.setItem(
+        "labchat_display_name",
         displayName
     );
-
-
-    currentSettings.displayName =
-        displayName;
-
-
-    saveSettings(
-        currentSettings
-    );
-
-
-    currentName.textContent =
-        displayName;
 
 
     nameInput.value =
         displayName;
 
 
-    updatePresenceName();
+    currentName.textContent =
+        displayName;
 
+
+    updatePresenceName();
 
     showToast(
         "Display name changed."
@@ -1439,7 +1495,7 @@ function updatePresenceName() {
 
 
 // ============================================================
-// MESSAGE INPUT
+// INPUT
 // ============================================================
 
 function autoResizeMessageInput() {
