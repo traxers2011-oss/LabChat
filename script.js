@@ -1,43 +1,26 @@
-// =========================================
+// ============================================================
 // LABCHAT
-// COMPLETE APPLICATION SCRIPT
-// =========================================
+// REALTIME DATABASE CHAT
+// ============================================================
 
 import {
     auth,
-    db,
     realtimeDb
 } from "./firebase.js";
-
 
 import {
     signInAnonymously,
     onAuthStateChanged
-} from
-    "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
-
-import {
-    collection,
-    addDoc,
-    query,
-    orderBy,
-    limit,
-    onSnapshot,
-    serverTimestamp
-} from
-    "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 import {
     ref,
+    push,
     set,
     onValue,
     onDisconnect,
-    serverTimestamp as realtimeServerTimestamp
-} from
-    "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
-
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
 import {
     BACKGROUNDS,
@@ -49,28 +32,24 @@ import {
 } from "./settings.js";
 
 
-// =========================================
-// APPLICATION STATE
-// =========================================
+// ============================================================
+// STATE
+// ============================================================
 
 let currentUser = null;
-
 let displayName = "";
-
 let messagesUnsubscribe = null;
-
 let presenceUnsubscribe = null;
 
 let currentSettings = loadSettings();
 
 let selectedBackground =
-    currentSettings.background ||
-    "midnight";
+    currentSettings.background || "midnight";
 
 
-// =========================================
-// DOM ELEMENTS
-// =========================================
+// ============================================================
+// DOM
+// ============================================================
 
 const nameScreen =
     document.getElementById("nameScreen");
@@ -88,9 +67,7 @@ const nameError =
     document.getElementById("nameError");
 
 const messagesContainer =
-    document.getElementById(
-        "messagesContainer"
-    );
+    document.getElementById("messagesContainer");
 
 const messages =
     document.getElementById("messages");
@@ -108,9 +85,7 @@ const emojiPicker =
     document.getElementById("emojiPicker");
 
 const closeEmojiButton =
-    document.getElementById(
-        "closeEmojiButton"
-    );
+    document.getElementById("closeEmojiButton");
 
 const emojiGrid =
     document.getElementById("emojiGrid");
@@ -119,62 +94,42 @@ const onlineCount =
     document.getElementById("onlineCount");
 
 const settingsButton =
-    document.getElementById(
-        "settingsButton"
-    );
+    document.getElementById("settingsButton");
 
 const settingsOverlay =
-    document.getElementById(
-        "settingsOverlay"
-    );
+    document.getElementById("settingsOverlay");
 
 const closeSettingsButton =
-    document.getElementById(
-        "closeSettingsButton"
-    );
+    document.getElementById("closeSettingsButton");
 
 const changeNameInput =
-    document.getElementById(
-        "changeNameInput"
-    );
+    document.getElementById("changeNameInput");
 
 const saveNameButton =
-    document.getElementById(
-        "saveNameButton"
-    );
+    document.getElementById("saveNameButton");
 
 const currentName =
-    document.getElementById(
-        "currentName"
-    );
+    document.getElementById("currentName");
 
 const backgroundGrid =
-    document.getElementById(
-        "backgroundGrid"
-    );
+    document.getElementById("backgroundGrid");
 
 const customBackgroundInput =
-    document.getElementById(
-        "customBackgroundInput"
-    );
+    document.getElementById("customBackgroundInput");
 
 const applyBackgroundButton =
-    document.getElementById(
-        "applyBackgroundButton"
-    );
+    document.getElementById("applyBackgroundButton");
 
 const toast =
     document.getElementById("toast");
 
 const toastMessage =
-    document.getElementById(
-        "toastMessage"
-    );
+    document.getElementById("toastMessage");
 
 
-// =========================================
-// INITIALIZATION
-// =========================================
+// ============================================================
+// INITIALIZE
+// ============================================================
 
 document.addEventListener(
     "DOMContentLoaded",
@@ -192,14 +147,10 @@ async function initialize() {
 
     setupEventListeners();
 
-    const savedName =
-        getSavedName();
+    const savedName = getSavedName();
 
     if (savedName) {
-
-        nameInput.value =
-            savedName;
-
+        nameInput.value = savedName;
     }
 
     try {
@@ -218,22 +169,19 @@ async function initialize() {
         );
 
     }
-
 }
 
 
-// =========================================
+// ============================================================
 // AUTHENTICATION
-// =========================================
+// ============================================================
 
 onAuthStateChanged(
     auth,
-    async (user) => {
+    (user) => {
 
         if (!user) {
-
             return;
-
         }
 
         currentUser = user;
@@ -242,9 +190,9 @@ onAuthStateChanged(
 );
 
 
-// =========================================
+// ============================================================
 // EVENT LISTENERS
-// =========================================
+// ============================================================
 
 function setupEventListeners() {
 
@@ -258,9 +206,7 @@ function setupEventListeners() {
         "keydown",
         (event) => {
 
-            if (
-                event.key === "Enter"
-            ) {
+            if (event.key === "Enter") {
 
                 event.preventDefault();
 
@@ -354,9 +300,7 @@ function setupEventListeners() {
         "keydown",
         (event) => {
 
-            if (
-                event.key === "Enter"
-            ) {
+            if (event.key === "Enter") {
 
                 event.preventDefault();
 
@@ -381,12 +325,12 @@ function setupEventListeners() {
             const insideEmoji =
                 emojiPicker.contains(event.target);
 
-            const emojiButtonClicked =
+            const emojiClicked =
                 emojiButton.contains(event.target);
 
             if (
                 !insideEmoji &&
-                !emojiButtonClicked
+                !emojiClicked
             ) {
 
                 closeEmojiPicker();
@@ -399,9 +343,9 @@ function setupEventListeners() {
 }
 
 
-// =========================================
+// ============================================================
 // JOIN CHAT
-// =========================================
+// ============================================================
 
 async function joinChat() {
 
@@ -455,17 +399,13 @@ async function joinChat() {
 
     displayName = name;
 
-    saveDisplayName(
-        displayName
-    );
+    saveDisplayName(displayName);
 
 
     currentSettings.displayName =
         displayName;
 
-    saveSettings(
-        currentSettings
-    );
+    saveSettings(currentSettings);
 
 
     currentName.textContent =
@@ -489,15 +429,14 @@ async function joinChat() {
 
     startChat();
 
-
     messageInput.focus();
 
 }
 
 
-// =========================================
+// ============================================================
 // START CHAT
-// =========================================
+// ============================================================
 
 function startChat() {
 
@@ -510,47 +449,63 @@ function startChat() {
 }
 
 
-// =========================================
-// FIRESTORE MESSAGE LISTENER
-// =========================================
+// ============================================================
+// REALTIME DATABASE MESSAGES
+// ============================================================
 
 function listenForMessages() {
 
     if (messagesUnsubscribe) {
-
         messagesUnsubscribe();
-
     }
 
 
     const messagesRef =
-        collection(
-            db,
+        ref(
+            realtimeDb,
             "messages"
         );
 
 
-    const messagesQuery =
-        query(
-            messagesRef,
-            orderBy(
-                "createdAt",
-                "asc"
-            ),
-            limit(300)
-        );
-
-
     messagesUnsubscribe =
-        onSnapshot(
-            messagesQuery,
+        onValue(
+            messagesRef,
             (snapshot) => {
 
                 messages.innerHTML = "";
 
 
+                const data =
+                    snapshot.val();
+
+
+                if (!data) {
+
+                    showEmptyChat();
+
+                    return;
+
+                }
+
+
+                const messageList =
+                    Object.entries(data)
+                        .map(
+                            ([id, message]) => ({
+                                id,
+                                ...message
+                            })
+                        )
+                        .sort(
+                            (a, b) =>
+                                (a.createdAt || 0) -
+                                (b.createdAt || 0)
+                        )
+                        .slice(-300);
+
+
                 if (
-                    snapshot.empty
+                    messageList.length === 0
                 ) {
 
                     showEmptyChat();
@@ -560,15 +515,12 @@ function listenForMessages() {
                 }
 
 
-                snapshot.forEach(
-                    (documentSnapshot) => {
-
-                        const data =
-                            documentSnapshot.data();
+                messageList.forEach(
+                    (message) => {
 
                         renderMessage(
-                            data,
-                            documentSnapshot.id
+                            message,
+                            message.id
                         );
 
                     }
@@ -595,9 +547,9 @@ function listenForMessages() {
 }
 
 
-// =========================================
+// ============================================================
 // SEND MESSAGE
-// =========================================
+// ============================================================
 
 async function sendMessage() {
 
@@ -606,9 +558,7 @@ async function sendMessage() {
 
 
     if (!text) {
-
         return;
-
     }
 
 
@@ -650,24 +600,24 @@ async function sendMessage() {
 
     try {
 
-        await addDoc(
-            collection(
-                db,
+        const messagesRef =
+            ref(
+                realtimeDb,
                 "messages"
-            ),
+            );
+
+
+        const newMessageRef =
+            push(messagesRef);
+
+
+        await set(
+            newMessageRef,
             {
-
                 text: text,
-
-                senderName:
-                    displayName,
-
-                senderId:
-                    currentUser.uid,
-
-                createdAt:
-                    serverTimestamp()
-
+                senderName: displayName,
+                senderId: currentUser.uid,
+                createdAt: Date.now()
             }
         );
 
@@ -701,9 +651,9 @@ async function sendMessage() {
 }
 
 
-// =========================================
+// ============================================================
 // RENDER MESSAGE
-// =========================================
+// ============================================================
 
 function renderMessage(
     data,
@@ -711,9 +661,7 @@ function renderMessage(
 ) {
 
     const wrapper =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
 
     const own =
@@ -729,21 +677,18 @@ function renderMessage(
 
 
     const content =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
     content.className =
         "message-content";
 
 
     const author =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
     author.className =
         "message-author";
+
 
     author.textContent =
         own
@@ -755,24 +700,22 @@ function renderMessage(
 
 
     const text =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
     text.className =
         "message-text";
+
 
     text.textContent =
         data.text || "";
 
 
     const time =
-        document.createElement(
-            "span"
-        );
+        document.createElement("span");
 
     time.className =
         "message-time";
+
 
     time.textContent =
         formatMessageTime(
@@ -780,32 +723,22 @@ function renderMessage(
         );
 
 
-    content.appendChild(
-        author
-    );
+    content.appendChild(author);
 
-    content.appendChild(
-        text
-    );
+    content.appendChild(text);
 
-    content.appendChild(
-        time
-    );
+    content.appendChild(time);
 
-    wrapper.appendChild(
-        content
-    );
+    wrapper.appendChild(content);
 
-    messages.appendChild(
-        wrapper
-    );
+    messages.appendChild(wrapper);
 
 }
 
 
-// =========================================
+// ============================================================
 // EMPTY CHAT
-// =========================================
+// ============================================================
 
 function showEmptyChat() {
 
@@ -830,36 +763,28 @@ function showEmptyChat() {
 }
 
 
-// =========================================
-// FORMAT TIME
-// =========================================
+// ============================================================
+// MESSAGE TIME
+// ============================================================
 
-function formatMessageTime(
-    timestamp
-) {
+function formatMessageTime(timestamp) {
 
     if (!timestamp) {
-
         return "Sending...";
-
     }
 
 
-    let date;
+    const date =
+        new Date(timestamp);
 
 
     if (
-        typeof timestamp.toDate ===
-        "function"
+        Number.isNaN(
+            date.getTime()
+        )
     ) {
 
-        date =
-            timestamp.toDate();
-
-    } else {
-
-        date =
-            new Date();
+        return "";
 
     }
 
@@ -875,16 +800,14 @@ function formatMessageTime(
 }
 
 
-// =========================================
+// ============================================================
 // ONLINE PRESENCE
-// =========================================
+// ============================================================
 
 function setupPresence() {
 
     if (!currentUser) {
-
         return;
-
     }
 
 
@@ -904,9 +827,7 @@ function setupPresence() {
 
 
     if (presenceUnsubscribe) {
-
         presenceUnsubscribe();
-
     }
 
 
@@ -932,16 +853,10 @@ function setupPresence() {
                 set(
                     presenceRef,
                     {
-
-                        name:
-                            displayName,
-
-                        online:
-                            true,
-
+                        name: displayName,
+                        online: true,
                         lastSeen:
-                            realtimeServerTimestamp()
-
+                            serverTimestamp()
                     }
                 );
 
@@ -954,9 +869,9 @@ function setupPresence() {
 }
 
 
-// =========================================
-// ONLINE USERS LISTENER
-// =========================================
+// ============================================================
+// ONLINE USERS
+// ============================================================
 
 function listenForOnlineUsers() {
 
@@ -986,19 +901,16 @@ function listenForOnlineUsers() {
 
 
             const users =
-                Object.values(
-                    data
-                ).filter(
-                    user =>
-                        user &&
-                        user.online === true
-                );
+                Object.values(data)
+                    .filter(
+                        user =>
+                            user &&
+                            user.online === true
+                    );
 
 
             onlineCount.textContent =
-                String(
-                    users.length
-                );
+                String(users.length);
 
         },
         (error) => {
@@ -1014,9 +926,9 @@ function listenForOnlineUsers() {
 }
 
 
-// =========================================
+// ============================================================
 // EMOJI PICKER
-// =========================================
+// ============================================================
 
 function createEmojiPicker() {
 
@@ -1031,8 +943,8 @@ function createEmojiPicker() {
                     "button"
                 );
 
-            button.type =
-                "button";
+
+            button.type = "button";
 
             button.className =
                 "emoji-item";
@@ -1040,13 +952,12 @@ function createEmojiPicker() {
             button.textContent =
                 emoji;
 
+
             button.addEventListener(
                 "click",
                 () => {
 
-                    insertEmoji(
-                        emoji
-                    );
+                    insertEmoji(emoji);
 
                 }
             );
@@ -1082,8 +993,7 @@ function insertEmoji(emoji) {
 
 
     const newPosition =
-        start +
-        emoji.length;
+        start + emoji.length;
 
 
     messageInput.focus();
@@ -1100,10 +1010,6 @@ function insertEmoji(emoji) {
 
 }
 
-
-// =========================================
-// EMOJI CONTROLS
-// =========================================
 
 function toggleEmojiPicker() {
 
@@ -1123,9 +1029,9 @@ function closeEmojiPicker() {
 }
 
 
-// =========================================
+// ============================================================
 // BACKGROUND PICKER
-// =========================================
+// ============================================================
 
 function createBackgroundPicker() {
 
@@ -1140,14 +1046,17 @@ function createBackgroundPicker() {
                     "button"
                 );
 
+
             option.type =
                 "button";
 
             option.className =
                 "background-option";
 
+
             option.dataset.background =
                 background.id;
+
 
             option.style.background =
                 background.css;
@@ -1158,13 +1067,12 @@ function createBackgroundPicker() {
                     "span"
                 );
 
+
             label.textContent =
                 background.name;
 
 
-            option.appendChild(
-                label
-            );
+            option.appendChild(label);
 
 
             option.addEventListener(
@@ -1192,9 +1100,9 @@ function createBackgroundPicker() {
 }
 
 
-// =========================================
-// APPLY PRESET BACKGROUND
-// =========================================
+// ============================================================
+// PRESET BACKGROUND
+// ============================================================
 
 function applyPresetBackground(
     background
@@ -1207,6 +1115,7 @@ function applyPresetBackground(
     currentSettings.background =
         background.id;
 
+
     currentSettings.customBackground =
         "";
 
@@ -1216,8 +1125,7 @@ function applyPresetBackground(
     );
 
 
-    document.documentElement
-        .style
+    document.documentElement.style
         .setProperty(
             "--chat-background",
             background.css
@@ -1226,7 +1134,10 @@ function applyPresetBackground(
 
     updateSelectedBackground();
 
-    customBackgroundInput.value = "";
+
+    customBackgroundInput.value =
+        "";
+
 
     showToast(
         "Background changed."
@@ -1235,9 +1146,9 @@ function applyPresetBackground(
 }
 
 
-// =========================================
+// ============================================================
 // CUSTOM BACKGROUND
-// =========================================
+// ============================================================
 
 function applyCustomBackground() {
 
@@ -1272,6 +1183,7 @@ function applyCustomBackground() {
     currentSettings.customBackground =
         url;
 
+
     currentSettings.background =
         "custom";
 
@@ -1281,15 +1193,26 @@ function applyCustomBackground() {
     );
 
 
-    document.documentElement
-        .style
+    selectedBackground =
+        "custom";
+
+
+    document.documentElement.style
         .setProperty(
             "--chat-background",
             `url("${url}")`
         );
 
 
+    document.documentElement.style
+        .setProperty(
+            "--chat-background-size",
+            "cover"
+        );
+
+
     updateSelectedBackground();
+
 
     showToast(
         "Custom background applied."
@@ -1298,9 +1221,9 @@ function applyCustomBackground() {
 }
 
 
-// =========================================
+// ============================================================
 // APPLY SAVED BACKGROUND
-// =========================================
+// ============================================================
 
 function applySavedBackground() {
 
@@ -1308,11 +1231,16 @@ function applySavedBackground() {
         currentSettings.customBackground
     ) {
 
-        document.documentElement
-            .style
+        document.documentElement.style
             .setProperty(
                 "--chat-background",
                 `url("${currentSettings.customBackground}")`
+            );
+
+        document.documentElement.style
+            .setProperty(
+                "--chat-background-size",
+                "cover"
             );
 
         selectedBackground =
@@ -1332,78 +1260,60 @@ function applySavedBackground() {
 
 
     if (!background) {
-
-        selectedBackground =
-            "midnight";
-
-        document.documentElement
-            .style
-            .setProperty(
-                "--chat-background",
-                BACKGROUNDS[0].css
-            );
-
         return;
-
     }
 
 
-    document.documentElement
-        .style
+    document.documentElement.style
         .setProperty(
             "--chat-background",
             background.css
         );
 
+
+    document.documentElement.style
+        .setProperty(
+            "--chat-background-size",
+            "cover"
+        );
+
 }
 
 
-// =========================================
-// SELECTED BACKGROUND UI
-// =========================================
+// ============================================================
+// BACKGROUND SELECTION UI
+// ============================================================
 
 function updateSelectedBackground() {
 
-    const options =
-        document.querySelectorAll(
+    document
+        .querySelectorAll(
             ".background-option"
-        );
+        )
+        .forEach(
+            (option) => {
 
-
-    options.forEach(
-        option => {
-
-            if (
-                option.dataset.background ===
-                selectedBackground
-            ) {
-
-                option.classList.add(
-                    "selected"
-                );
-
-            } else {
-
-                option.classList.remove(
-                    "selected"
+                option.classList.toggle(
+                    "selected",
+                    option.dataset.background ===
+                    selectedBackground
                 );
 
             }
-
-        }
-    );
+        );
 
 }
 
 
-// =========================================
+// ============================================================
 // SETTINGS
-// =========================================
+// ============================================================
 
 function openSettings() {
 
     changeNameInput.value =
         displayName;
+
 
     currentName.textContent =
         displayName;
@@ -1424,10 +1334,6 @@ function closeSettings() {
 
 }
 
-
-// =========================================
-// CHANGE DISPLAY NAME
-// =========================================
 
 function changeDisplayName() {
 
@@ -1480,6 +1386,7 @@ function changeDisplayName() {
     currentSettings.displayName =
         displayName;
 
+
     saveSettings(
         currentSettings
     );
@@ -1489,7 +1396,7 @@ function changeDisplayName() {
         displayName;
 
 
-    changeNameInput.value =
+    nameInput.value =
         displayName;
 
 
@@ -1503,60 +1410,37 @@ function changeDisplayName() {
 }
 
 
-// =========================================
-// UPDATE PRESENCE NAME
-// =========================================
-
-async function updatePresenceName() {
+function updatePresenceName() {
 
     if (!currentUser) {
-
         return;
-
     }
 
 
-    try {
-
-        const presenceRef =
-            ref(
-                realtimeDb,
-                "presence/" +
-                currentUser.uid
-            );
-
-
-        await set(
-            presenceRef,
-            {
-
-                name:
-                    displayName,
-
-                online:
-                    true,
-
-                lastSeen:
-                    realtimeServerTimestamp()
-
-            }
+    const presenceRef =
+        ref(
+            realtimeDb,
+            "presence/" +
+            currentUser.uid
         );
 
-    } catch (error) {
 
-        console.error(
-            "Could not update presence:",
-            error
-        );
-
-    }
+    set(
+        presenceRef,
+        {
+            name: displayName,
+            online: true,
+            lastSeen:
+                serverTimestamp()
+        }
+    );
 
 }
 
 
-// =========================================
-// AUTO RESIZE TEXTAREA
-// =========================================
+// ============================================================
+// MESSAGE INPUT
+// ============================================================
 
 function autoResizeMessageInput() {
 
@@ -1564,44 +1448,35 @@ function autoResizeMessageInput() {
         "auto";
 
 
-    const height =
+    messageInput.style.height =
         Math.min(
             messageInput.scrollHeight,
-            130
-        );
-
-
-    messageInput.style.height =
-        `${height}px`;
+            150
+        ) + "px";
 
 }
 
 
-// =========================================
-// SCROLL
-// =========================================
-
 function scrollMessagesToBottom() {
 
-    requestAnimationFrame(
+    setTimeout(
         () => {
 
             messagesContainer.scrollTop =
                 messagesContainer.scrollHeight;
 
-        }
+        },
+        50
     );
 
 }
 
 
-// =========================================
-// ERROR
-// =========================================
+// ============================================================
+// ERROR / TOAST
+// ============================================================
 
-function showNameError(
-    message
-) {
+function showNameError(message) {
 
     nameError.textContent =
         message;
@@ -1609,16 +1484,12 @@ function showNameError(
 }
 
 
-// =========================================
-// TOAST
-// =========================================
+function showToast(message) {
 
-let toastTimer = null;
+    if (!toast || !toastMessage) {
+        return;
+    }
 
-
-function showToast(
-    message
-) {
 
     toastMessage.textContent =
         message;
@@ -1629,73 +1500,15 @@ function showToast(
     );
 
 
-    clearTimeout(
-        toastTimer
+    setTimeout(
+        () => {
+
+            toast.classList.remove(
+                "show"
+            );
+
+        },
+        2500
     );
 
-
-    toastTimer =
-        setTimeout(
-            () => {
-
-                toast.classList.remove(
-                    "show"
-                );
-
-            },
-            2500
-        );
-
 }
-
-
-// =========================================
-// TAB / PAGE VISIBILITY
-// =========================================
-
-document.addEventListener(
-    "visibilitychange",
-    () => {
-
-        if (
-            !currentUser
-        ) {
-
-            return;
-
-        }
-
-
-        if (
-            document.visibilityState ===
-            "visible"
-        ) {
-
-            updatePresenceName();
-
-        }
-
-    }
-);
-
-
-// =========================================
-// BEFORE PAGE LEAVE
-// =========================================
-
-window.addEventListener(
-    "beforeunload",
-    () => {
-
-        if (!currentUser) {
-
-            return;
-
-        }
-
-
-        // onDisconnect() in Firebase
-        // handles the actual presence removal.
-
-    }
-);
