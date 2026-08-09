@@ -227,17 +227,14 @@ body {
     inset: 0;
 
     display: none;
-
     flex-direction: column;
 
     background:
-        var(--chat-background);
+        var(--chat-background, #0b1020);
 
     background-size: cover;
-
     background-position: center;
-
-    background-attachment: fixed;
+    background-repeat: no-repeat;
 }
 
 .chat-app.active {
